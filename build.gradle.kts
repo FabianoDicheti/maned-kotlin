@@ -84,16 +84,6 @@ tasks.withType<Test>().configureEach {
     // (MANEDKT_PLAN.md §5.11). JDK 26 is past JEP 472's warn stage.
     jvmArgs("--enable-native-access=ALL-UNNAMED")
 
-    // ENGINE DEFECT, not a convenience. The engine parses request-body numbers
-    // through the process C locale, and the JVM calls setlocale(LC_ALL, "") at
-    // startup — so on a pt_BR/de_DE/fr_FR machine `[[3,1],[2,4]]` silently parses
-    // as `[[3],[2]]` and the request returns 200 with WRONG VALUES. The
-    // conformance corpus's expectations were generated under the "C" locale, so
-    // that is the locale it has to be walked in. LocaleHazardTest flips
-    // LC_NUMERIC back on purpose and pins the diagnosis; the binding itself
-    // detects and warns (Ffi.warnIfDecimalSeparatorIsNotADot) rather than calling
-    // setlocale behind the caller's back. See README "Also set LC_ALL=C".
-    environment("LC_ALL", "C")
     systemProperty("maned.library.path", manedLibraryPath.get())
     systemProperty("maned.conformance.dir", manedConformanceDir.get())
     systemProperty("maned.target", manedTargetTriple())

@@ -24,24 +24,21 @@ println(result.tensor("a").data.toList())       // exact int64
 println(result.decimal("y"))                    // exact BigDecimal at quantres > 0
 ```
 
-## Also set LC_ALL=C — today, this is not optional
+## Your host locale does not matter
 
-The engine parses request-body numbers through the **process C locale**. In a
-comma-decimal locale (`pt_BR`, `de_DE`, `fr_FR`, …) `[[3,1],[2,4]]` is parsed as
-`[[3],[2]]`: a **200 response with silently wrong values**, no error, no note.
+The engine is locale-hardened as of this library version: `handle()` and
+`loadServerScript()` pin their thread to the C locale with POSIX `uselocale` for the
+duration of a call, so requests and responses are byte-identical whatever `$LANG` or
+`java.util.Locale` say. You do not need `LC_ALL=C`, and the binding does not touch your
+process locale.
 
-This lands on the JVM specifically, because the JVM calls `setlocale(LC_ALL, "")` during
-startup and adopts `$LANG`/`$LC_NUMERIC` from the environment — a C++ host that never
-calls `setlocale` stays in the `"C"` locale and never sees it.
-
-```
-LC_ALL=C java --enable-native-access=ALL-UNNAMED -jar your-app.jar
-```
-
-maned-kotlin **detects** this (via `localeconv()`) and logs one line. It deliberately
-does **not** call `setlocale()` on your process to hide it: that would be a
-process-global, thread-unsafe write into a host runtime, papering over a data-corruption
-bug. See `LocaleHazardTest` for the executable diagnosis.
+This is worth stating because it briefly was not true: a JVM calls
+`setlocale(LC_ALL, "")` at startup and adopts `$LANG`/`$LC_NUMERIC`, and against an
+older engine a comma-decimal host (`pt_BR`, `de_DE`, `fr_FR`, …) parsed `[[3,1],[2,4]]`
+as `[[3],[2]]` — a 200 with silently wrong values. `LocaleIndependenceTest` is the
+JVM-side regression gate for the fix: it flips the whole process into each installed
+comma-decimal locale and asserts the exact response bytes, including that a
+`quantres > 0` script still prints `3.00` and never `3,00`.
 
 ## What is here
 

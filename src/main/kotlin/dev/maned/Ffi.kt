@@ -216,8 +216,6 @@ internal object Ffi {
         abiManifestPath = manifest
         assertLayout(readManifest(manifest), manifest.toString())
 
-        warnIfDecimalSeparatorIsNotADot()
-
         val abi = abiVersion()
         if (abi !in SUPPORTED_ABI) {
             throw ManedLoadException(
@@ -358,8 +356,16 @@ internal object Ffi {
      * `null` when it could not be determined.
      *
      * Not `java.util.Locale`: that is the *JVM's* notion of a locale and can be
-     * set independently (`-Duser.language`). The number this checks is the one
-     * `strtod`/`sscanf` inside the engine actually consult.
+     * set independently (`-Duser.language`). This reads the one that `strtod` and
+     * friends actually consult.
+     *
+     * Kept for `LocaleIndependenceTest`, which flips the process into `pt_BR` /
+     * `de_DE` / `fr_FR` and needs to prove the flip took effect before asserting
+     * that the engine's answers did not move. There is no longer a warning built
+     * on it: the engine pins its own thread locale with `uselocale` for the
+     * duration of a request (maned_lang fe3ebc8), so a comma-decimal host is
+     * simply not this binding's problem any more, and a line advising `LC_ALL=C`
+     * would now be stale advice about a fixed bug.
      */
     fun cDecimalSeparator(): String? = runCatching {
         val handle = linker.downcallHandle(
@@ -375,40 +381,6 @@ internal object Ffi {
             .reinterpret(Long.MAX_VALUE)
             .getString(0)
     }.getOrNull()
-
-    /**
-     * **Engine defect, detected rather than worked around.**
-     *
-     * The engine's JSON request parser is sensitive to the process C locale: in a
-     * comma-decimal locale (`pt_BR`, `de_DE`, `fr_FR`, ...) the number scanner
-     * consumes the element separator as a decimal point, so `[[3,1],[2,4]]`
-     * silently parses as `[[3],[2]]` and the request succeeds with **wrong
-     * values** — a 200, no note, no warning.
-     *
-     * This bites the JVM specifically because the JVM calls
-     * `setlocale(LC_ALL, "")` during startup, adopting `$LANG`/`$LC_NUMERIC` from
-     * the environment. A C++ host that never calls `setlocale` stays in the "C"
-     * locale and never sees it, which is why the engine's own suites are green.
-     *
-     * maned-kotlin does **not** call `setlocale` to compensate: that is a
-     * process-global, thread-unsafe write into a host runtime, and papering over
-     * a data-corruption bug is worse than reporting it. One actionable line, once.
-     */
-    private fun warnIfDecimalSeparatorIsNotADot() {
-        val separator = cDecimalSeparator() ?: return
-        if (separator == ".") return
-        Log.warnOnce(
-            "the process C locale uses '$separator' as its decimal separator " +
-                "(java.util.Locale is ${java.util.Locale.getDefault()}). The engine's " +
-                "JSON number parser is locale-sensitive, so a request body such as " +
-                "{\"x\": [[3,1],[2,4]]} parses as [[3],[2]] — a 200 response with " +
-                "SILENTLY WRONG values. The JVM adopts this locale from \$LANG / " +
-                "\$LC_NUMERIC at startup; a C++ host that never calls setlocale does " +
-                "not. Until the engine is fixed, start the JVM with LC_ALL=C (or at " +
-                "least LC_NUMERIC=C) in its environment. maned-kotlin deliberately " +
-                "does not call setlocale() on your process to hide this."
-        )
-    }
 
     // -- entry points -----------------------------------------------------------
 
