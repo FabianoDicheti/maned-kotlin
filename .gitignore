@@ -2,4 +2,10 @@
 build/
 .idea/
 *.iml
+
+# The capi artifact is a separate, frozen deliverable — never vendored here.
+# `stageNativeForTests` copies it in for the extraction test (MANEDKT_PLAN.md §4.6);
+# a published jar gets it from the maned-capi tarball at assembly time.
 src/main/resources/native/*/libmaned_c.*
+src/main/resources/native/*/maned_c_abi.json
+src/test/resources/native/

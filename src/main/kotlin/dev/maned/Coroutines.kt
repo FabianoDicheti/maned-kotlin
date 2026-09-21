@@ -1,5 +1,6 @@
 package dev.maned
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.JsonObject
@@ -7,11 +8,51 @@ import kotlinx.serialization.json.JsonObject
 /**
  * suspend overloads on Dispatchers.IO (MANEDKT_PLAN.md §4.5).
  *
- * Dispatchers.IO because it is platform-backed: a native downcall pins a
- * virtual thread's carrier for the whole call (§5.1 — the sharpest hazard in
- * the plan). Never Dispatchers.Default, never a virtual-thread dispatcher.
- * Services doing many concurrent runs should use a limitedParallelism slice
- * sized against setKernelThreads.
+ * `Dispatchers.IO` because it is **platform-backed**: a native downcall pins a
+ * virtual thread's carrier for the whole call (§5.1 — the sharpest hazard in the
+ * plan). Never `Dispatchers.Default`, never a virtual-thread dispatcher.
+ *
+ * ### Sizing
+ *
+ * `Dispatchers.IO` defaults to a **64-thread ceiling**, and every in-flight call
+ * may itself spawn [Maned.setKernelThreads] interpreter workers (`parallel_rows`).
+ * 64 concurrent runs times 8 kernel threads is 512 runnable threads on a machine
+ * that has 8 cores — multiplicative oversubscription arriving through the
+ * dispatcher instead of through rayon. A service doing many concurrent runs
+ * should give maned calls a slice:
+ *
+ * ```kotlin
+ * val manedDispatcher = Dispatchers.IO.limitedParallelism(4)   // x setKernelThreads(2)
+ * withContext(manedDispatcher) { script.run(payload) }
+ * ```
+ *
+ * ### Cancellation
+ *
+ * There is deliberately no timeout overload. A `withTimeout { runAsync(...) }`
+ * *appears* to work — the coroutine resumes on time — while the dispatcher thread
+ * stays blocked inside C until the call finishes (§5.5). That is a worse failure
+ * than an honest hang, because it looks handled. Real cancellation needs an
+ * `mnd_cancel` and an interpreter poll point; out of scope for v1.
  */
-suspend fun Script.runAsync(payload: JsonObject): Result =
-    withContext(Dispatchers.IO) { run(payload) }
+suspend fun Script.runAsync(
+    payload: JsonObject,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
+): Result = withContext(dispatcher) { run(payload) }
+
+/** [runAsync] for JSON that already exists as text. */
+suspend fun Script.runAsync(
+    payload: String,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
+): Result = withContext(dispatcher) { run(payload) }
+
+/**
+ * The raw [Script.request] escape hatch, off the calling thread. Same dispatcher
+ * rules and the same cancellation caveat as [runAsync]; no status map.
+ */
+suspend fun Script.requestAsync(
+    method: String,
+    target: String,
+    contentType: String? = null,
+    body: ByteArray = ByteArray(0),
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
+): Result = withContext(dispatcher) { request(method, target, contentType, body) }
