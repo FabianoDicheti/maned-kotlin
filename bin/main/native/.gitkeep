@@ -1,0 +1,2 @@
+# native/<target>/libmaned_c.{so,dylib} lands here at jar-build time, from the
+# maned-capi-$VERSION-$target.tar.gz release artifact (MANEDKT_PLAN.md §4.6).

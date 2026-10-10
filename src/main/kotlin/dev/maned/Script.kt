@@ -1,6 +1,12 @@
 package dev.maned
 
+import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonArray
 import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.booleanOrNull
+import kotlinx.serialization.json.contentOrNull
+import kotlinx.serialization.json.jsonObject
 import java.lang.foreign.MemorySegment
 import java.lang.ref.Cleaner
 import java.util.concurrent.atomic.AtomicBoolean
@@ -105,6 +111,129 @@ class Script internal constructor(
             )
         } finally {
             end()
+        }
+    }
+
+    // -- the file routes --------------------------------------------------------
+
+    /**
+     * `POST /run` as multipart — **the file route**: raw bytes in, raw bytes
+     * out, one part per declared `out::`.
+     *
+     * This is the only way to get the engine's actual file output. [run] goes to
+     * `/run.json`, which renders an `out::` image as a nested integer array and
+     * a csv as a JSON tensor; here a PNG comes back as a PNG.
+     *
+     * Each entry of [files] is an `in::` name and the raw bytes for it — CSV
+     * text, a PNG, a parquet file — in whatever format that input declares. The
+     * map's iteration order is the part order on the wire.
+     *
+     * ```kotlin
+     * val parts = script.runFiles("h0" to Files.readAllBytes(rows))
+     * Files.write(out, parts.getValue("heatmap"))
+     * ```
+     *
+     * A single-output script answers with the bare file and no part name at all,
+     * so the one declared `out::` name is used as the key — the return type must
+     * not depend on how many outputs the script happens to have.
+     */
+    fun runFiles(files: Map<String, ByteArray>): Map<String, ByteArray> {
+        val boundary = Multipart.boundaryFor(files)
+        val body = Multipart.encode(boundary, files)
+        val response = request("POST", "/run", "multipart/form-data; boundary=$boundary", body)
+        response.throwIfError()
+        if (response.contentType.lowercase().startsWith("multipart/")) {
+            return Multipart.decode(response.contentType, response.bodyBytes)
+        }
+        val names = outputs.map { it.name }
+        return mapOf((if (names.size == 1) names[0] else "body") to response.bodyBytes)
+    }
+
+    /** [runFiles] for the common one-or-two-input call. */
+    fun runFiles(vararg files: Pair<String, ByteArray>): Map<String, ByteArray> =
+        runFiles(files.toMap())
+
+    /**
+     * `POST /frame` — the `frame::` tables as a JSON document, status-mapped
+     * like [run].
+     *
+     * The frame document **is** the body on this route; unlike `/run.json` the
+     * tables are not nested under a `frames` key, so read [Result.json] directly.
+     */
+    fun frame(payload: JsonObject): Result = frame(payload.toString())
+
+    /** [frame], for a caller whose JSON already exists as text. */
+    fun frame(payload: String): Result =
+        request("POST", "/frame", "application/json", payload.toByteArray(Charsets.UTF_8))
+            .also { it.throwIfError() }
+
+    /**
+     * `POST /frame.csv` — the same tables as CSV text, bytes as written.
+     *
+     * Returned undecoded: a `text` column carries raw bytes `0..255` and is
+     * never promised to be UTF-8.
+     */
+    fun frameCsv(payload: JsonObject): ByteArray = frameCsv(payload.toString())
+
+    /** [frameCsv], for a caller whose JSON already exists as text. */
+    fun frameCsv(payload: String): ByteArray =
+        request("POST", "/frame.csv", "application/json", payload.toByteArray(Charsets.UTF_8))
+            .also { it.throwIfError() }
+            .bodyBytes
+
+    // -- the contract -----------------------------------------------------------
+
+    /**
+     * `GET /health` — this script's contract, fetched at most once.
+     *
+     * Cached because `mnd_open` builds the plan and freezes it: the contract
+     * cannot change while the handle is open, so re-asking would buy nothing but
+     * a round trip per [runFiles] call.
+     *
+     * `requests_served` is removed. It counts calls on **this handle**, so it
+     * looks like a server metric and is not one.
+     */
+    val health: JsonObject by lazy {
+        val response = request("GET", "/health", null, ByteArray(0))
+        response.throwIfError()
+        JsonObject(
+            Json.parseToJsonElement(response.text).jsonObject
+                .filterKeys { it != "requests_served" },
+        )
+    }
+
+    /** The `in::` contract — what a payload may, or must, carry. */
+    val inputs: List<IoSpec> get() = ioSpecs("inputs")
+
+    /**
+     * The response schema — the `out::` names [runFiles] returns parts for.
+     *
+     * Under `synthesizeOutputs` this lists the *synthesized* names, because
+     * synthesis happens in the engine's own `script.outputs`; this and what
+     * [run] returns cannot disagree.
+     */
+    val outputs: List<IoSpec> get() = ioSpecs("outputs")
+
+    /**
+     * The routes this script actually answers — `"POST /frame.csv"` appears only
+     * when it declares a `frame::`.
+     */
+    val routes: List<String>
+        get() = (health["routes"] as? JsonArray)
+            ?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+            ?: emptyList()
+
+    private fun ioSpecs(key: String): List<IoSpec> {
+        val array = health[key] as? JsonArray ?: return emptyList()
+        return array.mapNotNull { element ->
+            val entry = element as? JsonObject ?: return@mapNotNull null
+            val name = (entry["name"] as? JsonPrimitive)?.contentOrNull
+                ?: return@mapNotNull null
+            IoSpec(
+                name = name,
+                format = (entry["format"] as? JsonPrimitive)?.contentOrNull ?: "",
+                default = (entry["default"] as? JsonPrimitive)?.booleanOrNull,
+            )
         }
     }
 

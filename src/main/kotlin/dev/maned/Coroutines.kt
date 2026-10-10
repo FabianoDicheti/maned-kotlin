@@ -46,6 +46,27 @@ suspend fun Script.runAsync(
 ): Result = withContext(dispatcher) { run(payload) }
 
 /**
+ * `POST /run` as multipart, off the calling thread — the suspend half of
+ * [Script.runFiles]. Same dispatcher rules and cancellation caveat as [runAsync].
+ */
+suspend fun Script.runFilesAsync(
+    files: Map<String, ByteArray>,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
+): Map<String, ByteArray> = withContext(dispatcher) { runFiles(files) }
+
+/** `POST /frame`, off the calling thread; see [runAsync] for the caveats. */
+suspend fun Script.frameAsync(
+    payload: JsonObject,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
+): Result = withContext(dispatcher) { frame(payload) }
+
+/** `POST /frame.csv`, off the calling thread; see [runAsync] for the caveats. */
+suspend fun Script.frameCsvAsync(
+    payload: JsonObject,
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
+): ByteArray = withContext(dispatcher) { frameCsv(payload) }
+
+/**
  * The raw [Script.request] escape hatch, off the calling thread. Same dispatcher
  * rules and the same cancellation caveat as [runAsync]; no status map.
  */

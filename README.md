@@ -49,8 +49,29 @@ comma-decimal locale and asserts the exact response bytes, including that a
 | `Ffi.kt` | `Linker`, layouts, the ABI version check, the struct-layout gate |
 | `NativeLibrary.kt` | extraction from the jar, discovery, the refusal messages |
 | `Result.kt` | the `/run.json` document, `Tensor`, `BigDecimal` accessors |
+| `Multipart.kt` | `multipart/form-data` for the file routes, bytes in and out |
+| `IoSpec.kt` | one `in::`/`out::` entry of the contract, from `GET /health` |
 | `Errors.kt` | the `ManedException` hierarchy and the status map |
-| `Coroutines.kt` | `runAsync` on `Dispatchers.IO` |
+| `Coroutines.kt` | `runAsync`, `runFilesAsync`, `frameAsync` on `Dispatchers.IO` |
+
+### The file routes
+
+`run()` goes to `/run.json`, which renders an `out::` image as a nested integer
+array and a csv as a JSON tensor. For the engine's actual file bytes there is
+the multipart route, and it takes file bytes on the way in too — a `csv()` /
+`image()` / `parquet()` `in::` never has to be decoded into JSON first.
+
+| Call | Route | Returns |
+|---|---|---|
+| `script.runFiles("h0" to bytes)` | `POST /run` multipart | `Map<String, ByteArray>`, one entry per `out::` |
+| `script.frame(payload)` | `POST /frame` | `Result` — the frame document *is* the body |
+| `script.frameCsv(payload)` | `POST /frame.csv` | `ByteArray`, undecoded |
+| `script.inputs` / `.outputs` / `.routes` / `.health` | `GET /health` | the contract, fetched once and cached |
+
+`Multipart.encode` / `.decode` / `.boundaryFor` are public for anyone driving
+`request()` by hand. The encoding is byte-identical to manedpy's and maned-rs's
+— `IoTest` asserts it against a frozen body, so a drift is red rather than
+merely different.
 
 ## Threading
 
