@@ -109,11 +109,19 @@ val capiDistDir: Provider<String> =
     providers.gradleProperty("maned.capi.dist")
         .orElse(layout.projectDirectory.dir("../capi-dist-$version").asFile.absolutePath)
 
-data class NativeTarget(val classifier: String, val capiTarget: String, val libName: String)
+data class NativeTarget(
+    val classifier: String, val capiTarget: String,
+    val libName: String, val realPattern: String,
+)
 val nativeTargets = listOf(
-    NativeTarget("macos-universal", "universal-apple-darwin",    "libmaned_c.dylib"),
-    NativeTarget("linux-x86_64",    "x86_64-unknown-linux-gnu",  "libmaned_c.so"),
-    NativeTarget("linux-aarch64",   "aarch64-unknown-linux-gnu", "libmaned_c.so"),
+    // realPattern must match the REAL file, never a SONAME symlink: tarTree
+    // materializes a symlink entry as an empty file. The Linux tarballs ship
+    // libmaned_c.so -> .so.1 -> .so.1.X.Y; only the double-dotted name is
+    // the actual library, and it is renamed back to the canonical name the
+    // extraction path loads.
+    NativeTarget("macos-universal", "universal-apple-darwin",    "libmaned_c.dylib", "**/lib/libmaned_c.dylib"),
+    NativeTarget("linux-x86_64",    "x86_64-unknown-linux-gnu",  "libmaned_c.so",    "**/lib/libmaned_c.so.*.*"),
+    NativeTarget("linux-aarch64",   "aarch64-unknown-linux-gnu", "libmaned_c.so",    "**/lib/libmaned_c.so.*.*"),
 )
 
 val nativeJarTasks = nativeTargets.map { t ->
@@ -121,10 +129,8 @@ val nativeJarTasks = nativeTargets.map { t ->
         val tarball = file("${capiDistDir.get()}/maned-capi-$version-${t.capiTarget}.tar.gz")
         onlyIf { tarball.isFile }
         from(tarTree(resources.gzip(tarball))) {
-            include("**/lib/${t.libName}")
-            // tarTree materializes the SONAME symlink as the real bytes, so
-            // including only the canonical name yields exactly one file.
-            eachFile { path = name }
+            include(t.realPattern)
+            eachFile { path = t.libName }
             includeEmptyDirs = false
         }
         into(layout.buildDirectory.dir("capi/${t.classifier}"))
