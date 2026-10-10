@@ -1,0 +1,17 @@
+maned-kotlin
+============
+
+The Kotlin source in this distribution is licensed under Apache-2.0 (see
+LICENSE).
+
+The per-platform classifier jars (macos-universal, linux-x86_64,
+linux-aarch64) additionally bundle, under native/<target>/, an unmodified
+copy of the Maned embedding library (libmaned_c), which is NOT open source.
+It is redistributed under section 3 ("Redistributable Components") of the
+Maned End User License Agreement — see LICENSE-libmaned_c. That licence
+permits use and unmodified redistribution, and does not permit reverse
+engineering or modification of the library.
+
+The main jar contains no binary: without a classifier jar on the classpath,
+the library is resolved from $MANED_LIBRARY_PATH or a maned-capi release
+tarball from https://github.com/FabianoDicheti/maned/releases

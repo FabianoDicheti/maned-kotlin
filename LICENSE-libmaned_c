@@ -1,0 +1,111 @@
+Maned — End User License Agreement
+Copyright (c) 2026 Fabiano Dicheti. All rights reserved.
+
+By downloading, installing or using the Maned software ("the Software" — the
+maned-run, maned-serve and maned-lint programs, the Maned embedding library
+described in section 3, and any accompanying files), you agree to the terms
+below. If you do not agree, do not use the Software.
+
+
+1. GRANT OF LICENSE
+
+You are granted a worldwide, royalty-free, non-exclusive licence to install
+and use the Software, on any number of machines, for any purpose — personal,
+academic, or commercial, including in production and including work you are
+paid for. No fee, registration or notification is required.
+
+You may create, run and distribute programs written in the Maned language, and
+any output the Software produces, without restriction. Your programs and your
+data are yours; this licence does not claim any interest in them.
+
+
+2. RESTRICTIONS
+
+Except as section 3 expressly permits, you may not:
+
+  (a) redistribute, resell, sublicense, rent, lease or publish the Software,
+      or offer the Software itself to third parties as a hosted service,
+      without prior written permission;
+
+  (b) reverse engineer, decompile or disassemble the Software, or attempt to
+      derive its source code, except to the extent that this restriction is
+      expressly prohibited by applicable law;
+
+  (c) remove, obscure or alter any copyright, licence or attribution notice in
+      the Software or its accompanying files.
+
+The hosted-service restriction in section 2(a) concerns offering the Maned
+tooling ITSELF to third parties — a hosted script runner, playground, or
+compilation endpoint whose product is access to Maned. It does not restrict
+running your own application or service that embeds the Redistributable
+Components and serves your own product to your own users.
+
+Section 2(a) does not prevent you from directing others to the official
+download location, or from using a package manager that fetches the Software
+from that location on your behalf.
+
+
+3. REDISTRIBUTABLE COMPONENTS
+
+The following are the "Redistributable Components":
+
+  (a) the Maned embedding library — libmaned_c.so, libmaned_c.dylib, and any
+      equivalent shared library published by the copyright holder that exports
+      the documented mnd_* C ABI; and
+
+  (b) the public ABI header maned_c.h.
+
+Notwithstanding section 2(a), you are granted a worldwide, royalty-free,
+non-exclusive, perpetual and irrevocable licence to reproduce and redistribute
+the Redistributable Components, in unmodified form, alone or bundled inside
+your own software, packages, container images, or package-manager
+distributions, for any purpose including commercial purposes, and without fee,
+registration or notification.
+
+"Unmodified" means the component as published by the copyright holder, byte
+for byte. Renaming the file, or relocating it within your own package, is not
+a modification; patching it, or altering its exported symbols, is.
+
+You may write and publish — under any licence you choose, including an open
+source licence — software that calls the mnd_* C ABI, including bindings for
+other programming languages. Such software is yours; this licence does not
+claim any interest in it. The ABI is fully specified by maned_c.h and its
+accompanying documentation, so writing such software requires no act that
+section 2(b) restricts.
+
+Sections 2(b), 2(c) and 8 continue to apply to the Redistributable Components.
+Nothing in this section grants any right in the source code of the Software.
+
+
+4. NO OBLIGATION TO SUPPORT
+
+Nothing in this licence obliges the copyright holder to provide support,
+updates, bug fixes, or continued availability of any download location.
+
+
+5. NO WARRANTY
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
+
+
+6. LIMITATION OF LIABILITY
+
+IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY CLAIM, DAMAGES OR
+OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
+FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS
+IN THE SOFTWARE.
+
+
+7. RESERVATION OF RIGHTS
+
+The Software is licensed, not sold. All rights not expressly granted above are
+reserved by the copyright holder. The source code of the Software is not
+published and is not part of this distribution.
+
+
+8. THIRD-PARTY COMPONENTS
+
+The Software includes third-party components under their own terms. See
+THIRD_PARTY_NOTICES.md, distributed alongside this file.

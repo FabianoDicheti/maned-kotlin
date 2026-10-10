@@ -8,10 +8,15 @@ plugins {
     kotlin("jvm") version "2.3.21"
     kotlin("plugin.serialization") version "2.3.21"
     `java-library`
+    // Drives sources/javadoc jars, POM, signing and the Central Portal
+    // upload in one plugin (MANEDKT_PLAN.md §8). Credentials live in
+    // ~/.gradle/gradle.properties: mavenCentralUsername/-Password +
+    // signingInMemoryKey/-Password — never in this file.
+    id("com.vanniktech.maven.publish") version "0.34.0"
 }
 
 group = "dev.maned"
-version = "0.1.0-SNAPSHOT"
+version = "0.4.0"
 
 // --- Toolchain ---------------------------------------------------------------
 // jvmToolchain(N) would also pin the *target* to N. We want the local JDK for
@@ -92,6 +97,86 @@ tasks.withType<Test>().configureEach {
         exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
         showStackTraces = true
     }
+}
+
+// --- Publishing (MANEDKT_PLAN.md §8) ------------------------------------------
+// Main jar is pure JVM bytecode; the native library ships in per-platform
+// CLASSIFIER jars (maned-<v>-macos-universal.jar etc.), each carrying
+// native/<target>/libmaned_c.* — the exact layout NativeLibrary's extraction
+// path consumes — plus the mixed-licence files. Staged from the released
+// maned-capi tarballs named by -Pmaned.capi.dist (default: ../capi-dist-<v>).
+val capiDistDir: Provider<String> =
+    providers.gradleProperty("maned.capi.dist")
+        .orElse(layout.projectDirectory.dir("../capi-dist-$version").asFile.absolutePath)
+
+data class NativeTarget(val classifier: String, val capiTarget: String, val libName: String)
+val nativeTargets = listOf(
+    NativeTarget("macos-universal", "universal-apple-darwin",    "libmaned_c.dylib"),
+    NativeTarget("linux-x86_64",    "x86_64-unknown-linux-gnu",  "libmaned_c.so"),
+    NativeTarget("linux-aarch64",   "aarch64-unknown-linux-gnu", "libmaned_c.so"),
+)
+
+val nativeJarTasks = nativeTargets.map { t ->
+    val unpack = tasks.register<Copy>("unpackCapi-${t.classifier}") {
+        val tarball = file("${capiDistDir.get()}/maned-capi-$version-${t.capiTarget}.tar.gz")
+        onlyIf { tarball.isFile }
+        from(tarTree(resources.gzip(tarball))) {
+            include("**/lib/${t.libName}")
+            // tarTree materializes the SONAME symlink as the real bytes, so
+            // including only the canonical name yields exactly one file.
+            eachFile { path = name }
+            includeEmptyDirs = false
+        }
+        into(layout.buildDirectory.dir("capi/${t.classifier}"))
+    }
+    tasks.register<Jar>("nativeJar-${t.classifier}") {
+        dependsOn(unpack)
+        archiveClassifier.set(t.classifier)
+        onlyIf { layout.buildDirectory.dir("capi/${t.classifier}").get().asFile.resolve(t.libName).isFile }
+        from(layout.buildDirectory.dir("capi/${t.classifier}")) { into("native/${t.classifier}") }
+        from("LICENSE-libmaned_c", "NOTICE")
+    }
+}
+
+mavenPublishing {
+    publishToMavenCentral()
+    signAllPublications()
+    coordinates("dev.maned", "maned", version.toString())
+    configure(com.vanniktech.maven.publish.KotlinJvm(
+        javadocJar = com.vanniktech.maven.publish.JavadocJar.Empty(),
+        sourcesJar = true,
+    ))
+    pom {
+        name.set("maned")
+        description.set("Kotlin/JVM binding for the Maned integer dataflow language, via the FFM API")
+        url.set("https://maned-lang.com")
+        licenses {
+            license {
+                name.set("Apache-2.0")
+                url.set("https://www.apache.org/licenses/LICENSE-2.0")
+            }
+            license {
+                // The native classifier jars additionally carry libmaned_c
+                // under the Maned EULA §3 (see LICENSE-libmaned_c inside them).
+                name.set("LicenseRef-Maned-EULA (bundled libmaned_c in classifier jars)")
+                url.set("https://github.com/FabianoDicheti/maned-kotlin/blob/master/LICENSE-libmaned_c")
+            }
+        }
+        scm {
+            url.set("https://github.com/FabianoDicheti/maned-kotlin")
+            connection.set("scm:git:https://github.com/FabianoDicheti/maned-kotlin.git")
+        }
+        developers {
+            developer {
+                id.set("FabianoDicheti")
+                name.set("Fabiano Dicheti")
+            }
+        }
+    }
+}
+
+publishing.publications.withType<MavenPublication>().configureEach {
+    nativeJarTasks.forEach { artifact(it) }
 }
 
 /** Mirrors NativeLibrary.currentTarget() — kept in sync by NativeLibraryTest. */
