@@ -16,7 +16,7 @@ plugins {
 }
 
 group = "dev.maned"
-version = "0.4.1"
+version = "0.4.2"
 
 // --- Toolchain ---------------------------------------------------------------
 // jvmToolchain(N) would also pin the *target* to N. We want the local JDK for

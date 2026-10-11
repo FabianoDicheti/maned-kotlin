@@ -16,6 +16,7 @@ import java.lang.invoke.MethodHandle
 import java.lang.invoke.MethodHandleProxies
 import java.nio.file.Files
 import java.nio.file.Path
+import java.nio.file.StandardCopyOption
 
 /**
  * Linker, layouts, MethodHandles, the ABI version check (MANEDKT_PLAN.md §4).
@@ -305,8 +306,15 @@ internal object Ffi {
 
         val resource = "native/${NativeLibrary.currentTarget()}/maned_c_abi.json"
         tried += "classpath:$resource"
-        Ffi::class.java.classLoader.getResource(resource)?.let {
-            return Path.of(it.toURI())
+        // Inside a classifier jar this resource has a jar: URL, which
+        // Path.of(uri) cannot represent without mounting a zip filesystem
+        // (FileSystemNotFoundException). Extract to a temp file instead,
+        // exactly like the library itself.
+        Ffi::class.java.classLoader.getResourceAsStream(resource)?.use { ins ->
+            val tmp = Files.createTempFile("maned_c_abi", ".json")
+            tmp.toFile().deleteOnExit()
+            Files.copy(ins, tmp, StandardCopyOption.REPLACE_EXISTING)
+            return tmp
         }
 
         throw ManedLoadException(
