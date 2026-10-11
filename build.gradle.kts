@@ -16,7 +16,7 @@ plugins {
 }
 
 group = "dev.maned"
-version = "0.4.0"
+version = "0.4.1"
 
 // --- Toolchain ---------------------------------------------------------------
 // jvmToolchain(N) would also pin the *target* to N. We want the local JDK for
@@ -107,7 +107,7 @@ tasks.withType<Test>().configureEach {
 // maned-capi tarballs named by -Pmaned.capi.dist (default: ../capi-dist-<v>).
 val capiDistDir: Provider<String> =
     providers.gradleProperty("maned.capi.dist")
-        .orElse(layout.projectDirectory.dir("../capi-dist-$version").asFile.absolutePath)
+        .orElse(layout.projectDirectory.dir("../capi-dist-0.4.0").asFile.absolutePath)
 
 data class NativeTarget(
     val classifier: String, val capiTarget: String,
@@ -126,11 +126,16 @@ val nativeTargets = listOf(
 
 val nativeJarTasks = nativeTargets.map { t ->
     val unpack = tasks.register<Copy>("unpackCapi-${t.classifier}") {
-        val tarball = file("${capiDistDir.get()}/maned-capi-$version-${t.capiTarget}.tar.gz")
+        val tarball = file("${capiDistDir.get()}/maned-capi-0.4.0-${t.capiTarget}.tar.gz")
         onlyIf { tarball.isFile }
         from(tarTree(resources.gzip(tarball))) {
             include(t.realPattern)
             eachFile { path = t.libName }
+            includeEmptyDirs = false
+        }
+        from(tarTree(resources.gzip(tarball))) {
+            include("**/maned_c_abi.json")
+            eachFile { path = name }
             includeEmptyDirs = false
         }
         into(layout.buildDirectory.dir("capi/${t.classifier}"))
