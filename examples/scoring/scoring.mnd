@@ -1,0 +1,11 @@
+mnd::quantmax=30000;
+mnd::quantmin=-30000;
+mnd::quantres=0;
+
+in::w = [[1,2],[0,1]];
+
+calc::lambda_flow scoring(x, w) {
+    w x matmul y =
+} return y;
+
+out::y = csv("y.csv");

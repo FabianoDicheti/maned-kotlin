@@ -9,3 +9,5 @@ build/
 src/main/resources/native/*/libmaned_c.*
 src/main/resources/native/*/maned_c_abi.json
 src/test/resources/native/
+examples/scoring/.gradle/
+examples/scoring/build/

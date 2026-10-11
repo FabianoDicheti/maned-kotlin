@@ -2,6 +2,49 @@
 
 Call `.mnd` scripts from Kotlin/JVM, in-process, via the Foreign Function & Memory API.
 
+## Quickstart
+
+Published on Maven Central. Step by step, with JDK 22+ installed:
+
+1. In your Gradle project, add the library and the classifier jar for
+   your platform (`macos-universal`, `linux-x86_64` or `linux-aarch64` —
+   it carries the native engine library, nothing else to install):
+
+```kotlin
+dependencies {
+    implementation("dev.maned:maned:0.4.2")
+    runtimeOnly("dev.maned:maned:0.4.2:macos-universal")
+}
+application {
+    mainClass.set("ScoringKt")
+    applicationDefaultJvmArgs = listOf("--enable-native-access=ALL-UNNAMED")
+}
+```
+
+2. Save the script as `scoring.mnd` and this as `src/main/kotlin/Scoring.kt`:
+
+```kotlin
+import dev.maned.Maned
+
+fun main() {
+    Maned.load("scoring.mnd").use { s ->
+        val result = s.run("""{"x": [[2,0],[0,2]]}""")
+        println("y = " + result.outputs["y"])
+    }
+}
+```
+
+3. Run it:
+
+```
+$ gradle run
+y = [[2,4],[0,2]]
+```
+
+A complete, runnable copy of exactly this lives in
+[`examples/scoring/`](examples/scoring/) — `cd examples/scoring && gradle run`,
+resolving the published artifact from Maven Central.
+
 ## You need this JVM flag
 
 FFM's `libraryLookup` and `reinterpret` are restricted methods. Every consumer must run
