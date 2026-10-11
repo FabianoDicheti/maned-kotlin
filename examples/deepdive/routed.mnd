@@ -1,0 +1,14 @@
+mnd::quantmax=30000;
+mnd::quantmin=-30000;
+mnd::quantres=0;
+
+in::a = [[1,2],[3,4]];
+in::b = [[5,6],[7,8]];
+
+device::vm1 { host = "local"; }
+
+calc::lambda_flow mm(a, b) @device(vm1) {
+    a b matmul r =
+} return r;
+
+out::r = csv("r.csv");

@@ -1,0 +1,14 @@
+mnd::quantmax=100000;
+mnd::quantmin=-100000;
+mnd::quantres=2;
+
+in::data  = csv("data.csv");
+in::scale = 100;
+
+calc::lambda_flow gram(data, scale) {
+    data transpose dT =
+    dT data matmul raw =
+    raw scale div g =
+} return g;
+
+out::g = csv("gram.csv");

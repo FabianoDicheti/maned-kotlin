@@ -1,0 +1,14 @@
+mnd::quantmax=100000;
+mnd::quantmin=-100000;
+mnd::quantres=2;
+
+in::prices = [1999, 2550, 999];
+in::three  = 3;
+
+calc::lambda_flow avg(prices, three) {
+    prices tensor_sum total =
+    total three div mean =
+} return total, mean;
+
+out::total = csv("total.csv");
+out::mean  = csv("mean.csv");

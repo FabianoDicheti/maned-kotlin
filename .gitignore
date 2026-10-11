@@ -11,3 +11,5 @@ src/main/resources/native/*/maned_c_abi.json
 src/test/resources/native/
 examples/scoring/.gradle/
 examples/scoring/build/
+examples/deepdive/.gradle/
+examples/deepdive/build/

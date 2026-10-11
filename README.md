@@ -43,7 +43,10 @@ y = [[2,4],[0,2]]
 
 A complete, runnable copy of exactly this lives in
 [`examples/scoring/`](examples/scoring/) — `cd examples/scoring && gradle run`,
-resolving the published artifact from Maven Central.
+resolving the published artifact from Maven Central. Deeper, equally
+runnable: [`examples/deepdive/`](examples/deepdive/) — `gradle runFiles`
+(file routes), `gradle runDecimals` (exact BigDecimals + coroutines),
+`gradle runRouted` (the local Bark VM).
 
 ## You need this JVM flag
 
