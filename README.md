@@ -1,3 +1,5 @@
+![the maned mark, in Maven's colors](https://raw.githubusercontent.com/FabianoDicheti/maned-kotlin/master/docs/img/logo.png)
+
 # maned-kotlin
 
 Call `.mnd` scripts from Kotlin/JVM, in-process, via the Foreign Function & Memory API.
@@ -156,6 +158,8 @@ honestly implement one.
 `noexec` mounts (common for `/tmp` in hardened containers) make `dlopen` fail even when
 the write succeeded, so each candidate directory is probed with a real `dlopen`; if all
 fail, the refusal names every path tried and the escape hatch.
+
+![a maned wolf with a cup of coffee](https://raw.githubusercontent.com/FabianoDicheti/maned-kotlin/master/docs/img/wolf.png)
 
 ## Building and testing
 
